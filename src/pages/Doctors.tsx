@@ -22,7 +22,9 @@ const INITIAL_DOCTOR_STATE = {
   address: "",
   specialization: "",
   image_url: "",
-  notes: ""
+  notes: "",
+  portal_username: "",
+  portal_password: ""
 };
 
 export default function Doctors() {
@@ -34,11 +36,9 @@ export default function Doctors() {
   const [selectedDoctorId, setSelectedDoctorId] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<any>(null);
   const [viewingDoctor, setViewingDoctor] = useState<any>(null);
   const [formData, setFormData] = useState(INITIAL_DOCTOR_STATE);
-  const [userFormData, setUserFormData] = useState({ username: "", password: "" });
   const [search, setSearch] = useState("");
   const [specializationFilter, setSpecializationFilter] = useState("All");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -47,7 +47,7 @@ export default function Doctors() {
 
   const fetchDoctors = async () => {
     try {
-      const res = await fetch("/api/doctors");
+      const res = await fetch("/api/doctors", { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setDoctors(data);
@@ -72,7 +72,9 @@ export default function Doctors() {
         address: doctor.address || "",
         specialization: doctor.specialization || "",
         image_url: doctor.image_url || "",
-        notes: doctor.notes || ""
+        notes: doctor.notes || "",
+        portal_username: doctor.portal_username || "",
+        portal_password: ""
       });
     } else {
       setEditingDoctor(null);
@@ -86,41 +88,6 @@ export default function Doctors() {
     setIsViewModalOpen(true);
   };
 
-  const handleOpenUserModal = async (doctor: any) => {
-    setEditingDoctor(doctor);
-    setSelectedDoctorId(doctor.id);
-    setUserFormData({ username: doctor.email || doctor.name.toLowerCase().replace(/\s/g, ''), password: "password123" });
-    setIsUserModalOpen(true);
-  };
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingDoctor) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/users/doctor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: userFormData.username,
-          password: userFormData.password,
-          doctor_id: editingDoctor.id
-        })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to create user");
-      }
-      toast.success("Doctor user created successfully");
-      setIsUserModalOpen(false);
-      fetchDoctors();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create user");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -129,7 +96,8 @@ export default function Doctors() {
         const res = await fetch(`/api/doctors/${editingDoctor.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(formData),
+          credentials: 'include'
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
@@ -140,7 +108,8 @@ export default function Doctors() {
         const res = await fetch("/api/doctors", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(formData),
+          credentials: 'include'
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
@@ -165,7 +134,10 @@ export default function Doctors() {
   const confirmDelete = async () => {
     if (!doctorToDelete) return;
     try {
-      const res = await fetch(`/api/doctors/${doctorToDelete.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/doctors/${doctorToDelete.id}`, { 
+        method: "DELETE",
+        credentials: 'include'
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to delete doctor");
@@ -340,13 +312,6 @@ export default function Doctors() {
                   title="Edit Profile"
                 >
                   <Edit3 size={14} /> Edit
-                </button>
-                <button 
-                  onClick={() => handleOpenUserModal(doctor)}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-colors"
-                  title="Portal Access"
-                >
-                  <Key size={14} /> Access
                 </button>
                 <button 
                   onClick={() => window.open(`https://wa.me/${doctor.phone?.replace(/\D/g, '')}`, '_blank')}
@@ -557,6 +522,37 @@ export default function Doctors() {
                   />
                 </div>
 
+                <div className="pt-6 border-t border-zinc-100">
+                  <h3 className="text-sm font-bold text-zinc-900 mb-4 flex items-center gap-2">
+                    <Key size={16} className="text-emerald-500" />
+                    Portal Access (Optional)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Username</label>
+                      <input 
+                        type="text" 
+                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-sans"
+                        value={formData.portal_username}
+                        onChange={(e) => setFormData({...formData, portal_username: e.target.value})}
+                        placeholder="doctor_username"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        {editingDoctor && formData.portal_username ? "New Password (leave blank to keep current)" : "Password"}
+                      </label>
+                      <input 
+                        type="password" 
+                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-sans"
+                        value={formData.portal_password}
+                        onChange={(e) => setFormData({...formData, portal_password: e.target.value})}
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex gap-4 pt-6">
                   <button 
                     type="button"
@@ -694,86 +690,6 @@ export default function Doctors() {
         message={`Are you sure you want to delete ${doctorToDelete?.name}? This action cannot be undone and will remove all associated records.`}
         confirmText="Delete Doctor"
       />
-
-      <AnimatePresence>
-        {isUserModalOpen && editingDoctor && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden"
-            >
-              <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-                <div>
-                  <h2 className="text-2xl font-bold text-zinc-900">Lab Access</h2>
-                  <p className="text-sm text-zinc-500 mt-1">Manage portal login for {editingDoctor.name}</p>
-                </div>
-                <button onClick={() => setIsUserModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="p-8 space-y-6">
-                <div className="space-y-4">
-                  {editingDoctor.portal_username ? (
-                    <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
-                            <CheckCircle2 size={20} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-emerald-900">Portal Access Active</p>
-                            <p className="text-xs text-emerald-600">This doctor can log in to the portal.</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="pt-4 border-t border-emerald-100">
-                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2">Username</p>
-                        <p className="font-mono font-bold text-emerald-900">{editingDoctor.portal_username}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-sm text-zinc-500">Portal access management for doctors.</p>
-                      <form onSubmit={handleCreateUser} className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Portal Username</label>
-                          <input 
-                            required
-                            type="text" 
-                            className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                            value={userFormData.username}
-                            onChange={(e) => setUserFormData({...userFormData, username: e.target.value})}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Initial Password</label>
-                          <input 
-                            required
-                            type="text" 
-                            className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                            value={userFormData.password}
-                            onChange={(e) => setUserFormData({...userFormData, password: e.target.value})}
-                          />
-                        </div>
-                        <button 
-                          type="submit"
-                          disabled={loading}
-                          className="w-full px-6 py-4 bg-emerald-500 text-white font-bold rounded-2xl hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50"
-                        >
-                          {loading ? "Processing..." : "Enable Portal Access"}
-                        </button>
-                      </form>
-                    </>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

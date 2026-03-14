@@ -133,7 +133,7 @@ export default function DoctorLedger() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           doctor_id: doctorId,
-          total_amount: totalAmount,
+          amount: totalAmount,
           due_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 7 days from now
           items
         })

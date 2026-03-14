@@ -28,8 +28,6 @@ db.exec(
   "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP" +
   ");" +
   "" +
-  "try { db.exec(\"ALTER TABLE doctors ADD COLUMN notes TEXT;\"); } catch (e) {}" +
-  "" +
   "CREATE TABLE IF NOT EXISTS technicians (" +
   "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
   "  name TEXT NOT NULL," +
@@ -48,8 +46,6 @@ db.exec(
   "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
   "  FOREIGN KEY (doctor_id) REFERENCES doctors(id)" +
   ");" +
-  "" +
-  "try { db.exec(\"ALTER TABLE users ADD COLUMN token TEXT;\"); } catch (e) {}" +
   "" +
   "CREATE TABLE IF NOT EXISTS invoices (" +
   "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -200,7 +196,8 @@ const runMigrations = () => {
     if (doctorsInfo.length > 0) {
       const doctorCols = [
         { name: 'specialization', type: 'TEXT' },
-        { name: 'image_url', type: 'TEXT' }
+        { name: 'image_url', type: 'TEXT' },
+        { name: 'notes', type: 'TEXT' }
       ];
       for (const col of doctorCols) {
         if (!doctorsInfo.some(c => c.name === col.name)) {
@@ -246,6 +243,10 @@ const runMigrations = () => {
       if (!usersInfo.some(c => c.name === 'doctor_id')) {
         db.exec("ALTER TABLE users ADD COLUMN doctor_id INTEGER");
         console.log("Added doctor_id column to users table");
+      }
+      if (!usersInfo.some(c => c.name === 'token')) {
+        db.exec("ALTER TABLE users ADD COLUMN token TEXT");
+        console.log("Added token column to users table");
       }
     }
 
@@ -319,7 +320,7 @@ const seedDatabase = () => {
       insertTask.run(case2.lastInsertRowid, "Scanning", tech2.lastInsertRowid, "Pending");
 
       // 6. Seed Invoices
-      const insertInvoice = db.prepare("INSERT INTO invoices (doctor_id, invoice_date, due_date, total_amount, status) VALUES (?, ?, ?, ?, ?)");
+      const insertInvoice = db.prepare("INSERT INTO invoices (doctor_id, invoice_date, due_date, amount, status) VALUES (?, ?, ?, ?, ?)");
       const inv1 = insertInvoice.run(doc1.lastInsertRowid, today.toISOString().split('T')[0], nextWeek.toISOString().split('T')[0], 12000, "Unpaid");
       
       const insertInvoiceItem = db.prepare("INSERT INTO invoice_items (invoice_id, case_id, amount) VALUES (?, ?, ?)");
@@ -561,11 +562,27 @@ try {
 
   app.post("/api/doctors", requireAuth, (req, res) => {
     try {
-      const { name, clinic_name, phone, email, address, specialization, image_url, notes } = req.body;
-      const info = db.prepare(
-        "INSERT INTO doctors (name, clinic_name, phone, email, address, specialization, image_url, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-      ).run(name, clinic_name, phone, email, address, specialization, image_url, notes);
-      res.json({ id: info.lastInsertRowid });
+      const { name, clinic_name, phone, email, address, specialization, image_url, notes, portal_username, portal_password } = req.body;
+      
+      const insertDoctor = db.transaction(() => {
+        const info = db.prepare(
+          "INSERT INTO doctors (name, clinic_name, phone, email, address, specialization, image_url, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        ).run(name, clinic_name, phone, email, address, specialization, image_url, notes);
+        
+        const doctorId = info.lastInsertRowid;
+        
+        if (portal_username && portal_password) {
+          const hashedPassword = bcrypt.hashSync(portal_password, 10);
+          db.prepare(
+            "INSERT INTO users (username, password, role, doctor_id) VALUES (?, ?, 'Doctor', ?)"
+          ).run(portal_username, hashedPassword, doctorId);
+        }
+        
+        return doctorId;
+      });
+      
+      const id = insertDoctor();
+      res.json({ id });
     } catch (error: any) {
       console.error("Error adding doctor:", error);
       res.status(500).json({ error: error.message || "Failed to add doctor" });
@@ -574,12 +591,35 @@ try {
 
   app.put("/api/doctors/:id", requireAuth, (req, res) => {
     try {
-      const { name, clinic_name, phone, email, address, specialization, image_url, notes } = req.body;
-      db.prepare(
-        "UPDATE doctors " +
-        "SET name = ?, clinic_name = ?, phone = ?, email = ?, address = ?, specialization = ?, image_url = ?, notes = ? " +
-        "WHERE id = ?"
-      ).run(name, clinic_name, phone, email, address, specialization, image_url, notes, req.params.id);
+      const { name, clinic_name, phone, email, address, specialization, image_url, notes, portal_username, portal_password } = req.body;
+      const doctorId = req.params.id;
+      
+      const updateDoctor = db.transaction(() => {
+        db.prepare(
+          "UPDATE doctors " +
+          "SET name = ?, clinic_name = ?, phone = ?, email = ?, address = ?, specialization = ?, image_url = ?, notes = ? " +
+          "WHERE id = ?"
+        ).run(name, clinic_name, phone, email, address, specialization, image_url, notes, doctorId);
+        
+        if (portal_username) {
+          const existingUser = db.prepare("SELECT id FROM users WHERE doctor_id = ?").get(doctorId) as any;
+          if (existingUser) {
+            if (portal_password) {
+              const hashedPassword = bcrypt.hashSync(portal_password, 10);
+              db.prepare("UPDATE users SET username = ?, password = ? WHERE doctor_id = ?").run(portal_username, hashedPassword, doctorId);
+            } else {
+              db.prepare("UPDATE users SET username = ? WHERE doctor_id = ?").run(portal_username, doctorId);
+            }
+          } else if (portal_password) {
+            const hashedPassword = bcrypt.hashSync(portal_password, 10);
+            db.prepare(
+              "INSERT INTO users (username, password, role, doctor_id) VALUES (?, ?, 'Doctor', ?)"
+            ).run(portal_username, hashedPassword, doctorId);
+          }
+        }
+      });
+      
+      updateDoctor();
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error updating doctor:", error);

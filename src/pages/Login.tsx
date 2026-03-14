@@ -67,13 +67,18 @@ export default function Login({ onLogin }: LoginProps) {
           <h1 className="text-4xl font-black text-white tracking-tighter mb-2">
             DENTAL<span className="text-emerald-500">ARCHITECT</span>
           </h1>
-          <p className="text-zinc-500 font-medium">Management System v2.0</p>
+          <p className="text-zinc-500 font-medium">Dental Lab Management System v1.0</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl">
           <div className="mb-8">
             <h2 className="text-xl font-bold text-white">Staff Login</h2>
             <p className="text-sm text-zinc-400 mt-1">Enter your credentials to access the lab dashboard.</p>
+            <div className="mt-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+              <p className="text-xs text-emerald-500 font-bold uppercase tracking-wider mb-1">Default Credentials</p>
+              <p className="text-sm text-zinc-300">User: <span className="text-white font-mono">admin</span></p>
+              <p className="text-sm text-zinc-300">Pass: <span className="text-white font-mono">admin123</span></p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -85,7 +90,7 @@ export default function Login({ onLogin }: LoginProps) {
                   required
                   type="text" 
                   className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
-                  placeholder="admin"
+                  placeholder=""
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
@@ -100,7 +105,7 @@ export default function Login({ onLogin }: LoginProps) {
                   required
                   type="password" 
                   className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
-                  placeholder="admin123"
+                  placeholder=""
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
