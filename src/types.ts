@@ -8,6 +8,9 @@ export interface Doctor {
   specialization: string;
   image_url: string;
   notes?: string;
+  license_number?: string;
+  tax_id?: string;
+  preferred_contact_method?: string;
   portal_username?: string;
   created_at: number;
 }
@@ -18,7 +21,8 @@ export interface DentalCase {
   technician_id?: string;
   doctor_name?: string;
   technician_name?: string;
-  patient_name: string;
+  patient_name?: string;
+  patient_id?: string;
   case_type: string;
   material: string;
   shade: string;
@@ -29,6 +33,8 @@ export interface DentalCase {
   due_date: string;
   delivery_date?: string;
   cost: number;
+  discount_amount?: number;
+  tax_amount?: number;
   is_invoiced?: boolean;
   notes: string;
   image_url: string;
@@ -86,10 +92,14 @@ export interface CaseHistory {
 }
 
 export interface User {
-  _id: string;
+  id: string;
   username: string;
-  role: 'Admin' | 'Staff' | 'Doctor';
+  role: 'Admin' | 'Staff' | 'Doctor' | 'Manager';
+  full_name?: string;
+  email?: string;
+  status?: 'Active' | 'Inactive';
   doctor_id?: string;
+  last_login?: string;
   created_at: number;
 }
 
@@ -119,6 +129,9 @@ export interface Invoice {
   invoice_no: number;
   amount: number;
   total_paid?: number;
+  tax_rate?: number;
+  discount_rate?: number;
+  notes?: string;
   status: 'Unpaid' | 'Partial' | 'Paid';
   due_date: string;
   last_reminder_sent_at?: number;
@@ -145,4 +158,15 @@ export interface CaseTask {
   status: 'Pending' | 'In Progress' | 'Completed';
   completed_at?: number;
   created_at: number;
+}
+
+export interface Log {
+  id: number;
+  user_id: number;
+  username?: string;
+  action: string;
+  entity_type?: string;
+  entity_id?: number;
+  details?: string;
+  created_at: string;
 }

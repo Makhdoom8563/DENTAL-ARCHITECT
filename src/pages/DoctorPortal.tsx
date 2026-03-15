@@ -166,7 +166,7 @@ export default function DoctorPortal() {
           </div>
           <h1 className="text-4xl font-bold text-zinc-900 tracking-tight">Doctor's Portal</h1>
           <p className="text-zinc-500">
-            {loggedInDoctor ? `Logged in as ${loggedInDoctor.username}` : "Secure access for registered doctors."}
+            {loggedInDoctor ? `Logged in as Dr. ${loggedInDoctor.username}` : "Secure access for registered doctors."}
           </p>
           {loggedInDoctor ? (
             <div className="flex justify-center gap-6">
@@ -202,6 +202,7 @@ export default function DoctorPortal() {
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Username</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                  <div className="text-xs">Dr. </div>
                   <input 
                     required
                     type="text"
@@ -254,15 +255,15 @@ export default function DoctorPortal() {
                 <>
                   <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
                     <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Total Invoiced</p>
-                    <p className="text-2xl font-black text-zinc-900">${balance.total_invoiced.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-zinc-900">Rs {balance.total_invoiced.toLocaleString()}</p>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
                     <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Total Paid</p>
-                    <p className="text-2xl font-black text-emerald-600">${balance.total_paid.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-emerald-600">Rs {balance.total_paid.toLocaleString()}</p>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-sm bg-rose-50/30">
                     <p className="text-xs font-bold text-rose-400 uppercase tracking-widest mb-2">Outstanding Balance</p>
-                    <p className="text-2xl font-black text-rose-600">${balance.outstanding_balance.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-rose-600">Rs {balance.outstanding_balance.toLocaleString()}</p>
                   </div>
                 </>
               )}
@@ -546,7 +547,7 @@ export default function DoctorPortal() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right font-black text-emerald-600">
-                            ${p.amount.toLocaleString()}
+                            Rs {p.amount.toLocaleString()}
                           </td>
                         </tr>
                       ))}

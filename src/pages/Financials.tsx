@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  DollarSign, Plus, Search, Calendar, 
+  Banknote, Plus, Search, Calendar, 
   TrendingUp, TrendingDown, Wallet, 
   ArrowUpRight, ArrowDownRight, Filter,
-  CreditCard, Banknote, Receipt, X,
+  CreditCard, Receipt, X,
   ChevronUp, ChevronDown, ChevronsUpDown
 } from "lucide-react";
 import { Payment, Expense, Doctor } from "../types";
@@ -15,11 +15,23 @@ import {
   Tooltip, ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
 
+import { useNavigate } from "react-router-dom";
+
 export default function Financials() {
+  const navigate = useNavigate();
   const [payments, setPayments] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [summary, setSummary] = useState({ total_revenue: 0, total_payments: 0, total_expenses: 0, net_profit: 0 });
+  const [summary, setSummary] = useState({ 
+    total_revenue: 0, 
+    gross_revenue: 0,
+    total_discounts: 0,
+    total_taxes: 0,
+    total_payments: 0, 
+    total_expenses: 0, 
+    net_profit: 0,
+    pending_receivables: 0
+  });
   const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'payments' | 'expenses'>('payments');
@@ -282,10 +294,10 @@ export default function Financials() {
             <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
               <TrendingUp size={20} />
             </div>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full uppercase tracking-wider">Total Revenue</span>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full uppercase tracking-wider">Net Revenue</span>
           </div>
-          <h3 className="text-2xl font-bold text-zinc-900">${(summary.total_revenue || 0).toLocaleString()}</h3>
-          <p className="text-xs text-zinc-400 mt-1">Total billed to doctors</p>
+          <h3 className="text-2xl font-bold text-zinc-900">Rs {(summary.total_revenue || 0).toLocaleString()}</h3>
+          <p className="text-xs text-zinc-400 mt-1">Gross: Rs {summary.gross_revenue?.toLocaleString()}</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
@@ -295,7 +307,7 @@ export default function Financials() {
             </div>
             <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wider">Payments Received</span>
           </div>
-          <h3 className="text-2xl font-bold text-zinc-900">${(summary.total_payments || 0).toLocaleString()}</h3>
+          <h3 className="text-2xl font-bold text-zinc-900">Rs {(summary.total_payments || 0).toLocaleString()}</h3>
           <p className="text-xs text-zinc-400 mt-1">Cash flow into lab</p>
         </div>
 
@@ -306,19 +318,55 @@ export default function Financials() {
             </div>
             <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-full uppercase tracking-wider">Total Expenses</span>
           </div>
-          <h3 className="text-2xl font-bold text-zinc-900">${(summary.total_expenses || 0).toLocaleString()}</h3>
+          <h3 className="text-2xl font-bold text-zinc-900">Rs {(summary.total_expenses || 0).toLocaleString()}</h3>
           <p className="text-xs text-zinc-400 mt-1">Materials, rent, salaries</p>
         </div>
 
         <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 shadow-xl shadow-zinc-900/10">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 bg-emerald-500 text-white rounded-xl flex items-center justify-center">
-              <DollarSign size={20} />
+              <Banknote size={20} />
             </div>
             <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full uppercase tracking-wider">Net Profit</span>
           </div>
-          <h3 className="text-2xl font-bold text-white">${(summary.net_profit || 0).toLocaleString()}</h3>
+          <h3 className="text-2xl font-bold text-white">Rs {(summary.net_profit || 0).toLocaleString()}</h3>
           <p className="text-xs text-zinc-500 mt-1">Revenue minus expenses</p>
+        </div>
+      </div>
+
+      {/* Tax & Discount Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center">
+              <TrendingDown size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Total Discounts Given</p>
+              <h4 className="text-xl font-bold text-zinc-900">Rs {(summary.total_discounts || 0).toLocaleString()}</h4>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Total Tax Collected</p>
+            <h4 className="text-xl font-bold text-emerald-600">Rs {(summary.total_taxes || 0).toLocaleString()}</h4>
+          </div>
+        </div>
+        <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center">
+              <Receipt size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-600 uppercase tracking-widest">Pending Receivables</p>
+              <h4 className="text-xl font-bold text-amber-900">Rs {(summary.pending_receivables || 0).toLocaleString()}</h4>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate('/invoices')}
+            className="px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors"
+          >
+            View Invoices
+          </button>
         </div>
       </div>
 
@@ -366,7 +414,7 @@ export default function Financials() {
                   axisLine={false} 
                   tickLine={false} 
                   tick={{ fill: '#a1a1aa', fontSize: 10, fontWeight: 600 }}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `Rs ${value}`}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -425,7 +473,7 @@ export default function Financials() {
                   axisLine={false} 
                   tickLine={false} 
                   tick={{ fill: '#a1a1aa', fontSize: 10, fontWeight: 600 }}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `Rs ${value}`}
                 />
                 <Tooltip 
                   cursor={{ fill: '#f8fafc' }}
@@ -497,7 +545,7 @@ export default function Financials() {
                       <tr key={p.id} className="group hover:bg-zinc-50/50 transition-colors">
                         <td className="py-4 text-sm font-medium text-zinc-600">{format(new Date(p.payment_date), 'MMM d, yyyy')}</td>
                         <td className="py-4 text-sm font-bold text-zinc-900">{p.doctor_name}</td>
-                        <td className="py-4 text-sm font-bold text-emerald-600 text-right">${(p.amount || 0).toLocaleString()}</td>
+                        <td className="py-4 text-sm font-bold text-emerald-600 text-right">Rs {(p.amount || 0).toLocaleString()}</td>
                         <td className="py-4">
                           <span className="text-[10px] font-bold px-2 py-1 bg-zinc-100 text-zinc-600 rounded-md uppercase">
                             {p.payment_method}
@@ -539,7 +587,7 @@ export default function Financials() {
                         </span>
                       </td>
                       <td className="py-4 text-sm text-zinc-500">{e.description}</td>
-                      <td className="py-4 text-sm font-bold text-rose-600 text-right">${(e.amount || 0).toLocaleString()}</td>
+                      <td className="py-4 text-sm font-bold text-rose-600 text-right">Rs {(e.amount || 0).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -602,14 +650,14 @@ export default function Financials() {
                       <option value="">No link</option>
                       {doctorInvoices.map(inv => (
                         <option key={inv.id} value={inv.id}>
-                          INV-{inv.invoice_no} (${(inv.amount - (inv.total_paid || 0)).toLocaleString()} remaining)
+                          INV-{inv.invoice_no} (Rs {(inv.amount - (inv.total_paid || 0)).toLocaleString()} remaining)
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-zinc-700">Amount ($)</label>
+                      <label className="text-sm font-bold text-zinc-700">Amount (Rs)</label>
                       <input 
                         required
                         type="number" 
@@ -679,7 +727,7 @@ export default function Financials() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-zinc-700">Amount ($)</label>
+                      <label className="text-sm font-bold text-zinc-700">Amount (Rs)</label>
                       <input 
                         required
                         type="number" 

@@ -56,7 +56,8 @@ export default function Cases() {
 
   const filteredCases = cases.filter((c: any) => {
     const matchesSearch = 
-      c.patient_name.toLowerCase().includes(search.toLowerCase()) || 
+      (c.patient_name || "").toLowerCase().includes(search.toLowerCase()) || 
+      (c.patient_id || "").toLowerCase().includes(search.toLowerCase()) ||
       c.doctor_name?.toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === "All" || c.status === filter;
     return matchesSearch && matchesFilter;
@@ -131,7 +132,7 @@ export default function Cases() {
                 <th className="px-6 py-5 font-bold">Type/Material</th>
                 <th className="px-6 py-5 font-bold">Status</th>
                 <th className="px-6 py-5 font-bold">Due Date</th>
-                <th className="px-6 py-5 font-bold text-right">Action</th>
+                <th className="px-6 py-5 text-right font-bold">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -149,11 +150,13 @@ export default function Cases() {
                     <td className="px-6 py-5">
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold mr-3">
-                          {c.patient_name.charAt(0)}
+                          {(c.patient_name || "P").charAt(0)}
                         </div>
                         <div>
-                          <p className="font-bold text-zinc-900">{c.patient_name}</p>
-                          <p className="text-xs text-zinc-400">ID: #{String(c.id).padStart(4, '0')}</p>
+                          <p className="font-bold text-zinc-900">{c.patient_name || "No Name"}</p>
+                          <p className="text-xs text-zinc-400">
+                            {c.patient_id ? `PID: ${c.patient_id}` : `ID: #${String(c.id).padStart(4, '0')}`}
+                          </p>
                         </div>
                       </div>
                     </td>

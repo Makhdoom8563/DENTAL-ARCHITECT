@@ -10,6 +10,7 @@ export default defineSchema({
     address: v.optional(v.string()),
     specialization: v.optional(v.string()),
     image_url: v.optional(v.string()),
+    notes: v.optional(v.string()),
     created_at: v.number(), // timestamp
   }).index("by_name", ["name"]),
 
@@ -26,6 +27,7 @@ export default defineSchema({
     password: v.string(), // hashed
     role: v.string(), // "Admin", "Staff", "Doctor"
     doctor_id: v.optional(v.id("doctors")),
+    token: v.optional(v.string()),
     created_at: v.number(),
   }).index("by_username", ["username"]),
 
@@ -94,6 +96,7 @@ export default defineSchema({
     quantity: v.number(),
     unit: v.optional(v.string()),
     min_stock_level: v.number(),
+    cost_per_unit: v.optional(v.number()),
     last_updated: v.number(),
   }),
 

@@ -24,7 +24,10 @@ const INITIAL_DOCTOR_STATE = {
   image_url: "",
   notes: "",
   portal_username: "",
-  portal_password: ""
+  portal_password: "",
+  license_number: "",
+  tax_id: "",
+  preferred_contact_method: "Phone"
 };
 
 export default function Doctors() {
@@ -74,7 +77,10 @@ export default function Doctors() {
         image_url: doctor.image_url || "",
         notes: doctor.notes || "",
         portal_username: doctor.portal_username || "",
-        portal_password: ""
+        portal_password: "",
+        license_number: doctor.license_number || "",
+        tax_id: doctor.tax_id || "",
+        preferred_contact_method: doctor.preferred_contact_method || "Phone"
       });
     } else {
       setEditingDoctor(null);
@@ -313,6 +319,24 @@ export default function Doctors() {
                 >
                   <Edit3 size={14} /> Edit
                 </button>
+                {doctor.phone && (
+                  <button 
+                    onClick={() => window.open(`tel:${doctor.phone}`, '_self')}
+                    className="p-2.5 bg-zinc-50 text-zinc-600 rounded-xl font-bold text-xs hover:bg-zinc-100 transition-colors"
+                    title="Call"
+                  >
+                    <Phone size={16} />
+                  </button>
+                )}
+                {doctor.email && (
+                  <button 
+                    onClick={() => window.open(`mailto:${doctor.email}`, '_self')}
+                    className="p-2.5 bg-zinc-50 text-zinc-600 rounded-xl font-bold text-xs hover:bg-zinc-100 transition-colors"
+                    title="Email"
+                  >
+                    <Mail size={16} />
+                  </button>
+                )}
                 <button 
                   onClick={() => window.open(`https://wa.me/${doctor.phone?.replace(/\D/g, '')}`, '_blank')}
                   className="p-2.5 bg-green-50 text-green-600 rounded-xl font-bold text-xs hover:bg-green-100 transition-colors"
@@ -372,6 +396,12 @@ export default function Doctors() {
                   </td>
                   <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-2">
+                      {doctor.phone && (
+                        <button onClick={() => window.open(`tel:${doctor.phone}`, '_self')} className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors" title="Call"><Phone size={16} /></button>
+                      )}
+                      {doctor.email && (
+                        <button onClick={() => window.open(`mailto:${doctor.email}`, '_self')} className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors" title="Email"><Mail size={16} /></button>
+                      )}
                       <button 
                         onClick={() => navigate(`/doctors/${doctor.id}/ledger`)} 
                         className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs hover:bg-blue-100 transition-colors flex items-center gap-1.5"
@@ -482,8 +512,40 @@ export default function Doctors() {
                         className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-sans"
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        placeholder="+1 234 567 890"
+                        placeholder="+92 300 1234567"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">License Number</label>
+                      <input 
+                        type="text" 
+                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-sans"
+                        value={formData.license_number}
+                        onChange={(e) => setFormData({...formData, license_number: e.target.value})}
+                        placeholder="PMDC-12345"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Tax ID / NTN</label>
+                      <input 
+                        type="text" 
+                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-sans"
+                        value={formData.tax_id}
+                        onChange={(e) => setFormData({...formData, tax_id: e.target.value})}
+                        placeholder="1234567-8"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Preferred Contact</label>
+                      <select 
+                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-sans"
+                        value={formData.preferred_contact_method}
+                        onChange={(e) => setFormData({...formData, preferred_contact_method: e.target.value})}
+                      >
+                        <option value="Phone">Phone</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Email">Email</option>
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -628,6 +690,19 @@ export default function Doctors() {
                         </div>
                         <div className="flex items-center text-zinc-600">
                           <Building2 size={18} className="mr-3 text-zinc-400" /> {viewingDoctor.clinic_name}
+                        </div>
+                        {viewingDoctor.license_number && (
+                          <div className="flex items-center text-zinc-600">
+                            <FileText size={18} className="mr-3 text-zinc-400" /> License: {viewingDoctor.license_number}
+                          </div>
+                        )}
+                        {viewingDoctor.tax_id && (
+                          <div className="flex items-center text-zinc-600">
+                            <Receipt size={18} className="mr-3 text-zinc-400" /> Tax ID: {viewingDoctor.tax_id}
+                          </div>
+                        )}
+                        <div className="flex items-center text-zinc-600">
+                          <MessageCircle size={18} className="mr-3 text-zinc-400" /> Prefers: {viewingDoctor.preferred_contact_method || 'Phone'}
                         </div>
                       </div>
                     </div>

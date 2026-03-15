@@ -4,15 +4,21 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   ChevronLeft, Wallet, Receipt, 
   ArrowUpRight, ArrowDownRight, 
-  Calendar, FileText, DollarSign,
+  Calendar, FileText, Banknote,
   Briefcase, CheckCircle2, Clock,
-  Plus, X, Save, CreditCard
+  Plus, X, Save, CreditCard,
+  TrendingUp, Activity, User, Phone, Mail, MapPin,
+  Stethoscope, MessageCircle
 } from "lucide-react";
 import { Doctor, DentalCase, Payment } from "../types";
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, BarChart, Bar 
+} from 'recharts';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -29,6 +35,7 @@ export default function DoctorLedger() {
   const [stats, setStats] = useState({ total_cases: 0, pending_cases: 0, delivered_cases: 0, total_bill: 0, total_paid: 0, outstanding_balance: 0 });
   const [uninvoicedCases, setUninvoicedCases] = useState<any[]>([]);
   const [doctorInvoices, setDoctorInvoices] = useState<any[]>([]);
+  const [revenueTrend, setRevenueTrend] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -44,13 +51,14 @@ export default function DoctorLedger() {
 
   const fetchData = async () => {
     try {
-      const [docRes, casesRes, payRes, statsRes, uninvRes, invRes] = await Promise.all([
+      const [docRes, casesRes, payRes, statsRes, uninvRes, invRes, trendRes] = await Promise.all([
         fetch(`/api/doctors/${doctorId}`),
         fetch(`/api/doctors/${doctorId}/cases`),
         fetch(`/api/doctors/${doctorId}/payments`),
         fetch(`/api/reports/doctor-ledger/${doctorId}`),
         fetch(`/api/doctors/${doctorId}/cases?uninvoiced=true`),
-        fetch(`/api/invoices?doctor_id=${doctorId}`)
+        fetch(`/api/invoices?doctor_id=${doctorId}`),
+        fetch(`/api/reports/doctor-revenue-trend/${doctorId}`)
       ]);
 
       if (docRes.ok) setDoctor(await docRes.json());
@@ -68,6 +76,7 @@ export default function DoctorLedger() {
         const invoices = await invRes.json();
         setDoctorInvoices(invoices.filter((inv: any) => inv.status !== 'Paid'));
       }
+      if (trendRes.ok) setRevenueTrend(await trendRes.json());
     } catch (err) {
       console.error("Failed to fetch ledger data", err);
       toast.error("Failed to load ledger data");
@@ -173,7 +182,7 @@ export default function DoctorLedger() {
       </header>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
@@ -181,18 +190,18 @@ export default function DoctorLedger() {
             </div>
             <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wider">Total Billed</span>
           </div>
-          <h3 className="text-2xl font-bold text-zinc-900">${(stats.total_bill || 0).toLocaleString()}</h3>
+          <h3 className="text-2xl font-bold text-zinc-900">Rs {(stats.total_bill || 0).toLocaleString()}</h3>
           <p className="text-xs text-zinc-400 mt-1">From {stats.total_cases} total cases</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
-              <DollarSign size={20} />
+              <Banknote size={20} />
             </div>
             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full uppercase tracking-wider">Total Paid</span>
           </div>
-          <h3 className="text-2xl font-bold text-zinc-900">${(stats.total_paid || 0).toLocaleString()}</h3>
+          <h3 className="text-2xl font-bold text-zinc-900">Rs {(stats.total_paid || 0).toLocaleString()}</h3>
           <p className="text-xs text-zinc-400 mt-1">Payments received to date</p>
         </div>
 
@@ -203,13 +212,82 @@ export default function DoctorLedger() {
             </div>
             <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-1 rounded-full uppercase tracking-wider">Outstanding</span>
           </div>
-          <h3 className="text-2xl font-bold text-rose-700">${(stats.outstanding_balance || 0).toLocaleString()}</h3>
+          <h3 className="text-2xl font-bold text-rose-700">Rs {(stats.outstanding_balance || 0).toLocaleString()}</h3>
           <p className="text-xs text-rose-400 mt-1">Remaining balance due</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+              <Activity size={20} />
+            </div>
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full uppercase tracking-wider">Case Stats</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <div>
+              <h3 className="text-2xl font-bold text-zinc-900">{stats.delivered_cases}</h3>
+              <p className="text-xs text-zinc-400 mt-1">Delivered</p>
+            </div>
+            <div className="text-right">
+              <h3 className="text-2xl font-bold text-zinc-900">{stats.pending_cases}</h3>
+              <p className="text-xs text-zinc-400 mt-1">In Progress</p>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
+          {/* Revenue Trend Chart */}
+          <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-zinc-900 flex items-center">
+                <TrendingUp size={20} className="mr-2 text-emerald-500" /> Revenue Trend
+              </h2>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-emerald-500 rounded-full"></span>
+                <span className="text-xs font-bold text-zinc-500 uppercase">Monthly Revenue</span>
+              </div>
+            </div>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueTrend}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
+                  <XAxis 
+                    dataKey="month" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#71717a', fontSize: 10, fontWeight: 600 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#71717a', fontSize: 10, fontWeight: 600 }}
+                    tickFormatter={(value) => `Rs ${value >= 1000 ? (value/1000).toFixed(1) + 'k' : value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: any) => [`Rs ${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#10b981" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorRev)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
           {/* Recent Cases */}
           <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
@@ -238,7 +316,7 @@ export default function DoctorLedger() {
                             {c.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-bold text-zinc-900 text-right">${(c.cost || 0).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-zinc-900 text-right">Rs {(c.cost || 0).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -251,7 +329,7 @@ export default function DoctorLedger() {
           <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
               <h2 className="text-lg font-bold text-zinc-900 flex items-center">
-                <DollarSign size={20} className="mr-2 text-emerald-500" /> Payment History
+                <Banknote size={20} className="mr-2 text-emerald-500" /> Payment History
               </h2>
             </div>
             <div className="p-0">
@@ -283,7 +361,7 @@ export default function DoctorLedger() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-zinc-400 font-mono">{p.reference_no || "-"}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-emerald-600 text-right">${(p.amount || 0).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-emerald-600 text-right">Rs {(p.amount || 0).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -293,8 +371,58 @@ export default function DoctorLedger() {
           </div>
         </div>
 
-        {/* Record Payment Form */}
+        {/* Record Payment Form & Doctor Info */}
         <div className="space-y-8">
+          {/* Doctor Info Card */}
+          <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-zinc-100 bg-zinc-50/50">
+              <h2 className="text-lg font-bold text-zinc-900 flex items-center">
+                <User size={20} className="mr-2 text-emerald-500" /> Doctor Information
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4">
+                {doctor.image_url ? (
+                  <img src={doctor.image_url} alt={doctor.name} className="w-16 h-16 rounded-2xl object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-400">
+                    <User size={32} />
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-bold text-zinc-900">{doctor.name}</h3>
+                  <p className="text-sm text-emerald-600 font-medium">{doctor.clinic_name}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3 pt-4 border-t border-zinc-50">
+                <div className="flex items-center text-sm text-zinc-600">
+                  <Phone size={16} className="mr-3 text-zinc-400" /> {doctor.phone || 'N/A'}
+                </div>
+                <div className="flex items-center text-sm text-zinc-600">
+                  <Mail size={16} className="mr-3 text-zinc-400" /> {doctor.email || 'N/A'}
+                </div>
+                <div className="flex items-center text-sm text-zinc-600">
+                  <Stethoscope size={16} className="mr-3 text-zinc-400" /> {doctor.specialization || 'General'}
+                </div>
+                {doctor.license_number && (
+                  <div className="flex items-center text-sm text-zinc-600">
+                    <FileText size={16} className="mr-3 text-zinc-400" /> License: {doctor.license_number}
+                  </div>
+                )}
+                <div className="flex items-center text-sm text-zinc-600">
+                  <MessageCircle size={16} className="mr-3 text-zinc-400" /> Prefers: {doctor.preferred_contact_method || 'Phone'}
+                </div>
+              </div>
+
+              {doctor.notes && (
+                <div className="mt-4 p-4 bg-zinc-50 rounded-2xl border border-zinc-100 text-xs text-zinc-500 italic">
+                  "{doctor.notes}"
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden sticky top-8">
             <div className="p-6 border-b border-zinc-100 bg-zinc-50/50">
               <h2 className="text-lg font-bold text-zinc-900 flex items-center">
@@ -322,7 +450,7 @@ export default function DoctorLedger() {
                     <option value="">No link</option>
                     {doctorInvoices.map(inv => (
                       <option key={inv.id} value={inv.id}>
-                        INV-{inv.invoice_no} (${(inv.amount - (inv.total_paid || 0)).toLocaleString()} remaining)
+                        INV-{inv.invoice_no} (Rs {(inv.amount - (inv.total_paid || 0)).toLocaleString()} remaining)
                       </option>
                     ))}
                   </select>
@@ -331,7 +459,7 @@ export default function DoctorLedger() {
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Amount</label>
                   <div className="relative">
-                    <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <Banknote size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                     <input 
                       required
                       type="number" 
@@ -455,7 +583,7 @@ export default function DoctorLedger() {
                               <p className="text-xs text-zinc-500">{c.case_type} • {format(new Date(c.created_at), 'MMM d, yyyy')}</p>
                             </div>
                           </div>
-                          <p className="font-bold text-zinc-900">${c.cost.toLocaleString()}</p>
+                          <p className="font-bold text-zinc-900">Rs {c.cost.toLocaleString()}</p>
                         </div>
                       ))}
                     </div>
@@ -464,7 +592,7 @@ export default function DoctorLedger() {
                       <div>
                         <p className="text-sm text-zinc-500">Selected {selectedCases.length} cases</p>
                         <p className="text-xl font-bold text-zinc-900">
-                          Total: ${uninvoicedCases.filter((c: any) => selectedCases.includes(c.id)).reduce((sum: number, c: any) => sum + c.cost, 0).toLocaleString()}
+                          Total: Rs {uninvoicedCases.filter((c: any) => selectedCases.includes(c.id)).reduce((sum: number, c: any) => sum + c.cost, 0).toLocaleString()}
                         </p>
                       </div>
                       <button 

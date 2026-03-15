@@ -92,6 +92,29 @@ export const create = mutation({
   },
 });
 
+export const createItem = mutation({
+  args: {
+    invoice_id: v.id("invoices"),
+    case_id: v.optional(v.id("cases")),
+    description: v.string(),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const itemId = await ctx.db.insert("invoice_items", {
+      invoice_id: args.invoice_id,
+      case_id: args.case_id,
+      description: args.description,
+      amount: args.amount,
+    });
+
+    if (args.case_id) {
+      await ctx.db.patch(args.case_id, { is_invoiced: true });
+    }
+
+    return itemId;
+  },
+});
+
 export const updateStatus = mutation({
   args: { id: v.id("invoices"), status: v.string() },
   handler: async (ctx, args) => {

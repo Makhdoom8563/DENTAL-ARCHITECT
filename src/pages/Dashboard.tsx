@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { 
   Briefcase, Users, Clock, CheckCircle2, 
-  TrendingUp, ChevronRight, DollarSign, 
+  TrendingUp, ChevronRight, Banknote, 
   Wallet, TrendingDown, AlertCircle, FileText
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -71,8 +71,8 @@ export default function Dashboard() {
     },
     { 
       label: "Monthly Profit", 
-      value: `$${(financials.net_profit || 0).toLocaleString()}`, 
-      icon: DollarSign, 
+      value: `Rs ${(financials.net_profit || 0).toLocaleString()}`, 
+      icon: Banknote, 
       color: "text-purple-500", 
       bg: "bg-purple-50" 
     },
@@ -165,21 +165,21 @@ export default function Dashboard() {
                 <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Gross Revenue</span>
                 <TrendingUp size={16} className="text-emerald-500" />
               </div>
-              <p className="text-2xl font-bold text-emerald-700">${(financials.total_revenue || 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-emerald-700">Rs {(financials.total_revenue || 0).toLocaleString()}</p>
             </div>
             <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-rose-600 uppercase tracking-widest">Total Expenses</span>
                 <TrendingDown size={16} className="text-rose-500" />
               </div>
-              <p className="text-2xl font-bold text-rose-700">${(financials.total_expenses || 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-rose-700">Rs {(financials.total_expenses || 0).toLocaleString()}</p>
             </div>
             <div className="p-4 bg-zinc-900 rounded-2xl border border-zinc-800">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Net Profit</span>
-                <DollarSign size={16} className="text-emerald-400" />
+                <Banknote size={16} className="text-emerald-400" />
               </div>
-              <p className="text-2xl font-bold text-white">${(financials.net_profit || 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-white">Rs {(financials.net_profit || 0).toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -268,7 +268,7 @@ export default function Dashboard() {
             </Link>
             <Link to="/financials" className="flex items-center p-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors group">
               <div className="bg-white/20 p-2 rounded-lg mr-4">
-                <DollarSign size={20} />
+                <Banknote size={20} />
               </div>
               <div className="flex-1">
                 <p className="font-bold">Record Payment</p>

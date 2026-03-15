@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { Briefcase, User, Calendar, FileText, Save, X, ChevronLeft, Upload, Camera, LayoutGrid, Users, DollarSign, Clock } from "lucide-react";
+import { Briefcase, User, Calendar, FileText, Save, X, ChevronLeft, Upload, Camera, LayoutGrid, Users, Banknote, Clock } from "lucide-react";
 import { Doctor, Technician, Shade, RateList } from "../types";
 import { toast } from "react-hot-toast";
 import ToothChart from "../components/ToothChart";
@@ -17,7 +17,6 @@ export default function NewCase() {
   const navigate = useNavigate();
   
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [technicians, setTechnicians] = useState<any[]>([]);
   const [shades, setShades] = useState<any[]>([]);
   const [rates, setRates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,14 +24,16 @@ export default function NewCase() {
 
   const [formData, setFormData] = useState({
     doctor_id: "" as any,
-    technician_id: "" as any,
     patient_name: "",
+    patient_id: "",
     case_type: "",
     material: "",
     shade: "",
     priority: "Normal",
     receiving_date: format(new Date(), 'yyyy-MM-dd'),
     due_date: "",
+    delivery_date: "",
+    status: "Received",
     cost: "0",
     notes: "",
     image_url: "",
@@ -48,9 +49,8 @@ export default function NewCase() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [docsRes, techsRes, shadesRes, ratesRes] = await Promise.all([
+        const [docsRes, shadesRes, ratesRes] = await Promise.all([
           fetch("/api/doctors"),
-          fetch("/api/technicians"),
           fetch("/api/shades"),
           fetch("/api/rate-list")
         ]);
@@ -68,7 +68,6 @@ export default function NewCase() {
             }
           }
         }
-        if (techsRes.ok) setTechnicians(await techsRes.json());
         if (shadesRes.ok) setShades(await shadesRes.json());
         if (ratesRes.ok) setRates(await ratesRes.json());
       } catch (err) {
@@ -120,16 +119,17 @@ export default function NewCase() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           doctor_id: parseInt(formData.doctor_id),
-          technician_id: formData.technician_id ? parseInt(formData.technician_id) : undefined,
           patient_name: formData.patient_name,
+          patient_id: formData.patient_id,
           case_type: formData.case_type,
           material: formData.material,
           shade: formData.shade,
           selected_teeth: selectedTeeth.join(','),
           priority: formData.priority,
-          status: "Received",
+          status: formData.status,
           receiving_date: formData.receiving_date,
           due_date: formData.due_date,
+          delivery_date: formData.delivery_date,
           cost: parseFloat(formData.cost),
           notes: formData.notes,
           image_url: formData.image_url,
@@ -176,7 +176,6 @@ export default function NewCase() {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-zinc-900">New Dental Case</h1>
-            <p className="text-zinc-500 mt-1">Fill in the details for the new restoration job.</p>
           </div>
         </div>
       </header>
@@ -191,15 +190,22 @@ export default function NewCase() {
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-700">Patient Name</label>
                 <input 
-                  required
                   type="text" 
                   className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   value={formData.patient_name}
                   onChange={(e) => setFormData({...formData, patient_name: e.target.value})}
-                  placeholder="e.g. John Doe"
                 />
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-700">Patient ID</label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  value={formData.patient_id}
+                  onChange={(e) => setFormData({...formData, patient_id: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-bold text-zinc-700">Doctor / Clinic</label>
                 <select 
                   required
@@ -216,20 +222,7 @@ export default function NewCase() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-zinc-700">Assigned Technician</label>
-                <select 
-                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                  value={formData.technician_id}
-                  onChange={(e) => setFormData({...formData, technician_id: e.target.value})}
-                >
-                  <option value="">Select a technician</option>
-                  {technicians.map(t => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.specialization})</option>
-                  ))}
-                </select>
-              </div>
+            <div className="pt-4">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-700">Case Priority</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -272,7 +265,6 @@ export default function NewCase() {
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     value={formData.case_type}
                     onChange={(e) => setFormData({...formData, case_type: e.target.value, material: ""})}
-                    placeholder="Enter custom case type..."
                   />
                 ) : (
                   <div className="space-y-4">
@@ -337,7 +329,7 @@ export default function NewCase() {
                           <LayoutGrid size={16} />
                         </div>
                         <p className={cn("font-bold text-xs", formData.material === r.material ? "text-emerald-900" : "text-zinc-600")}>{r.material}</p>
-                        <p className="text-[10px] text-zinc-400 mt-1 font-bold">${r.price.toLocaleString()}</p>
+                        <p className="text-[10px] text-zinc-400 mt-1 font-bold">Rs {r.price.toLocaleString()}</p>
                       </button>
                     ))
                   ) : (
@@ -389,42 +381,23 @@ export default function NewCase() {
 
               <div className="space-y-4">
                 <label className="text-sm font-bold text-zinc-700">Shade</label>
-                <div className="flex flex-wrap gap-2">
+                <select 
+                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  value={formData.shade}
+                  onChange={(e) => setFormData({...formData, shade: e.target.value})}
+                >
+                  <option value="">Select a shade</option>
                   {shades.length > 0 ? shades.map(s => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setFormData({...formData, shade: s.name})}
-                      className={cn(
-                        "px-4 py-2 rounded-xl border-2 transition-all text-xs font-bold",
-                        formData.shade === s.name 
-                          ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" 
-                          : "bg-white border-zinc-100 text-zinc-500 hover:border-emerald-200 hover:text-emerald-500"
-                      )}
-                    >
-                      {s.name}
-                    </button>
+                    <option key={s.id} value={s.name}>{s.name}</option>
                   )) : (
                     ['A1', 'A2', 'A3', 'B1', 'B2', 'C1'].map(s => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setFormData({...formData, shade: s})}
-                        className={cn(
-                          "px-4 py-2 rounded-xl border-2 transition-all text-xs font-bold",
-                          formData.shade === s 
-                            ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" 
-                            : "bg-white border-zinc-100 text-zinc-500 hover:border-emerald-200 hover:text-emerald-500"
-                        )}
-                      >
-                        {s}
-                      </button>
+                      <option key={s} value={s}>{s}</option>
                     ))
                   )}
-                </div>
+                </select>
               </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-700">Receiving Date</label>
                 <div className="relative">
@@ -452,18 +425,44 @@ export default function NewCase() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-zinc-700">Case Cost ($)</label>
+                <label className="text-sm font-bold text-zinc-700">Delivery Date</label>
                 <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
                   <input 
-                    required
-                    type="number" 
+                    type="date" 
                     className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    value={formData.cost}
-                    onChange={(e) => setFormData({...formData, cost: e.target.value})}
-                    placeholder="0.00"
+                    value={formData.delivery_date}
+                    onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-700">Status</label>
+                <select 
+                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                >
+                  <option value="Received">Received</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-4">
+              <label className="text-sm font-bold text-zinc-700">Case Cost (Rs)</label>
+              <div className="relative">
+                <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                <input 
+                  required
+                  type="number" 
+                  className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  value={formData.cost}
+                  onChange={(e) => setFormData({...formData, cost: e.target.value})}
+                />
               </div>
             </div>
 
@@ -473,7 +472,6 @@ export default function NewCase() {
                 className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all h-32 resize-none"
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                placeholder="Specific instructions, margin details, etc."
               />
             </div>
 
@@ -524,9 +522,6 @@ export default function NewCase() {
                   </>
                 )}
               </div>
-              <p className="text-[10px] text-zinc-400 text-center italic">
-                Images can be edited later using AI tools.
-              </p>
             </div>
           </div>
 

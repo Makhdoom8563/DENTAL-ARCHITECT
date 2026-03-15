@@ -42,7 +42,11 @@ db.exec(
   "  username TEXT UNIQUE NOT NULL," +
   "  password TEXT NOT NULL," +
   "  role TEXT DEFAULT 'Staff'," +
+  "  full_name TEXT," +
+  "  email TEXT," +
+  "  status TEXT DEFAULT 'Active'," +
   "  doctor_id INTEGER," +
+  "  last_login DATETIME," +
   "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
   "  FOREIGN KEY (doctor_id) REFERENCES doctors(id)" +
   ");" +
@@ -65,7 +69,8 @@ db.exec(
   "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
   "  doctor_id INTEGER," +
   "  technician_id INTEGER," +
-  "  patient_name TEXT NOT NULL," +
+  "  patient_name TEXT," +
+  "  patient_id TEXT," +
   "  case_type TEXT NOT NULL," +
   "  material TEXT," +
   "  shade TEXT," +
@@ -156,6 +161,27 @@ db.exec(
   "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP" +
   ");" +
   "" +
+  "CREATE TABLE IF NOT EXISTS logs (" +
+  "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
+  "  user_id INTEGER," +
+  "  action TEXT NOT NULL," +
+  "  entity_type TEXT," +
+  "  entity_id INTEGER," +
+  "  details TEXT," +
+  "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+  "  FOREIGN KEY (user_id) REFERENCES users(id)" +
+  ");" +
+  "" +
+  "CREATE TABLE IF NOT EXISTS notifications (" +
+  "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
+  "  doctor_id INTEGER," +
+  "  type TEXT NOT NULL," +
+  "  message TEXT NOT NULL," +
+  "  is_read INTEGER DEFAULT 0," +
+  "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+  "  FOREIGN KEY (doctor_id) REFERENCES doctors(id)" +
+  ");" +
+  "" +
   "CREATE TABLE IF NOT EXISTS case_tasks (" +
   "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
   "  case_id INTEGER," +
@@ -201,7 +227,10 @@ const runMigrations = () => {
       const doctorCols = [
         { name: 'specialization', type: 'TEXT' },
         { name: 'image_url', type: 'TEXT' },
-        { name: 'notes', type: 'TEXT' }
+        { name: 'notes', type: 'TEXT' },
+        { name: 'license_number', type: 'TEXT' },
+        { name: 'tax_id', type: 'TEXT' },
+        { name: 'preferred_contact_method', type: "TEXT DEFAULT 'Phone'" }
       ];
       for (const col of doctorCols) {
         if (!doctorsInfo.some(c => c.name === col.name)) {
@@ -224,9 +253,12 @@ const runMigrations = () => {
         { name: 'receiving_date', type: "DATE DEFAULT CURRENT_DATE" },
         { name: 'delivery_date', type: 'DATE' },
         { name: 'cost', type: 'REAL DEFAULT 0' },
+        { name: 'discount_amount', type: 'REAL DEFAULT 0' },
+        { name: 'tax_amount', type: 'REAL DEFAULT 0' },
         { name: 'selected_teeth', type: 'TEXT' },
         { name: 'image_url', type: 'TEXT' },
-        { name: 'preparation_type', type: 'TEXT' }
+        { name: 'preparation_type', type: 'TEXT' },
+        { name: 'patient_id', type: 'TEXT' }
       ];
 
       for (const col of columnsToAdd) {
@@ -252,6 +284,18 @@ const runMigrations = () => {
         db.exec("ALTER TABLE users ADD COLUMN token TEXT");
         console.log("Added token column to users table");
       }
+      if (!usersInfo.some(c => c.name === 'full_name')) {
+        db.exec("ALTER TABLE users ADD COLUMN full_name TEXT");
+      }
+      if (!usersInfo.some(c => c.name === 'email')) {
+        db.exec("ALTER TABLE users ADD COLUMN email TEXT");
+      }
+      if (!usersInfo.some(c => c.name === 'status')) {
+        db.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'Active'");
+      }
+      if (!usersInfo.some(c => c.name === 'last_login')) {
+        db.exec("ALTER TABLE users ADD COLUMN last_login DATETIME");
+      }
     }
 
     // Invoices migrations
@@ -260,6 +304,15 @@ const runMigrations = () => {
       if (!invoicesInfo.some(c => c.name === 'last_reminder_sent_at')) {
         db.exec("ALTER TABLE invoices ADD COLUMN last_reminder_sent_at DATETIME");
         console.log("Added last_reminder_sent_at column to invoices table");
+      }
+      if (!invoicesInfo.some(c => c.name === 'tax_rate')) {
+        db.exec("ALTER TABLE invoices ADD COLUMN tax_rate REAL DEFAULT 0");
+      }
+      if (!invoicesInfo.some(c => c.name === 'discount_rate')) {
+        db.exec("ALTER TABLE invoices ADD COLUMN discount_rate REAL DEFAULT 0");
+      }
+      if (!invoicesInfo.some(c => c.name === 'notes')) {
+        db.exec("ALTER TABLE invoices ADD COLUMN notes TEXT");
       }
     }
 
@@ -453,7 +506,28 @@ try {
   db.exec("ALTER TABLE payments ADD COLUMN payment_method TEXT;");
 } catch (e) {}
 
+// Helper for logging
+const logAction = (userId: number | null, action: string, entityType?: string, entityId?: number, details?: string) => {
+  try {
+    db.prepare("INSERT INTO logs (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)").run(
+      userId, action, entityType || null, entityId || null, details || null
+    );
+  } catch (err) {
+    console.error("Failed to log action", err);
+  }
+};
+
 // API Routes
+app.get("/api/logs", requireAdmin, (req, res) => {
+  const logs = db.prepare(`
+    SELECT l.*, u.username 
+    FROM logs l 
+    LEFT JOIN users u ON l.user_id = u.id 
+    ORDER BY l.created_at DESC 
+    LIMIT 100
+  `).all();
+  res.json(logs);
+});
   app.get("/api/ping", (req, res) => {
     res.json({ pong: true, time: new Date().toISOString() });
   });
@@ -464,16 +538,22 @@ try {
       const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as any;
       
       if (user) {
+        if (user.status === 'Inactive') {
+          return res.status(403).json({ error: "Account is inactive. Please contact administrator." });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         
         if (isMatch) {
           const crypto = await import('crypto');
           const token = crypto.randomBytes(32).toString('hex');
           
-          db.prepare("UPDATE users SET token = ? WHERE id = ?").run(token, user.id);
+          db.prepare("UPDATE users SET token = ?, last_login = CURRENT_TIMESTAMP WHERE id = ?").run(token, user.id);
+          logAction(user.id, "Login", "User", user.id, "User logged in successfully");
           
           const { password: _, ...userWithoutPassword } = user;
           userWithoutPassword.token = token;
+          userWithoutPassword.last_login = new Date().toISOString();
           
           (req.session as any).userId = user.id;
           (req.session as any).user = userWithoutPassword;
@@ -683,34 +763,36 @@ try {
 
   app.post("/api/cases", requireAuth, (req, res) => {
     const { 
-      doctor_id, technician_id, patient_name, case_type, material, 
-      shade, selected_teeth, priority, due_date, receiving_date, 
+      doctor_id, technician_id, patient_name, patient_id, case_type, material, 
+      shade, selected_teeth, priority, status, due_date, receiving_date, 
       delivery_date, cost, notes, image_url, preparation_type 
     } = req.body;
     
     const info = db.prepare(`
       INSERT INTO cases (
-        doctor_id, technician_id, patient_name, case_type, material, 
-        shade, selected_teeth, priority, due_date, receiving_date, 
+        doctor_id, technician_id, patient_name, patient_id, case_type, material, 
+        shade, selected_teeth, priority, status, due_date, receiving_date, 
         delivery_date, cost, notes, image_url, preparation_type
       ) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      doctor_id, technician_id, patient_name, case_type, material, 
-      shade, selected_teeth, priority, due_date, receiving_date, 
+      doctor_id, technician_id, patient_name, patient_id, case_type, material, 
+      shade, selected_teeth, priority, status || 'Pending', due_date, receiving_date, 
       delivery_date, cost, notes, image_url, preparation_type
     );
     
     // Add initial history
     db.prepare("INSERT INTO case_history (case_id, status, comment) VALUES (?, ?, ?)")
-      .run(info.lastInsertRowid, 'Pending', 'Case created');
+      .run(info.lastInsertRowid, status || 'Pending', 'Case created');
+    
+    logAction((req.session as any).userId, "Create Case", "Case", info.lastInsertRowid as number, `Created case for patient: ${patient_name || 'N/A'}`);
       
     res.json({ id: info.lastInsertRowid });
   });
 
   app.put("/api/cases/:id", requireAuth, (req, res) => {
     const { 
-      status, technician_id, patient_name, case_type, material, 
+      status, technician_id, patient_name, patient_id, case_type, material, 
       shade, selected_teeth, priority, due_date, receiving_date, 
       delivery_date, cost, notes, image_url, preparation_type, comment 
     } = req.body;
@@ -722,6 +804,7 @@ try {
         "SET status = COALESCE(?, status), " +
         "technician_id = COALESCE(?, technician_id), " +
         "patient_name = COALESCE(?, patient_name), " +
+        "patient_id = COALESCE(?, patient_id), " +
         "case_type = COALESCE(?, case_type), " +
         "material = COALESCE(?, material), " +
         "shade = COALESCE(?, shade), " +
@@ -736,7 +819,7 @@ try {
         "preparation_type = COALESCE(?, preparation_type) " +
         "WHERE id = ?"
       ).run(
-        status, technician_id, patient_name, case_type, material, 
+        status, technician_id, patient_name, patient_id, case_type, material, 
         shade, selected_teeth, priority, due_date, receiving_date, 
         delivery_date, cost, notes, image_url, preparation_type,
         id
@@ -747,6 +830,8 @@ try {
           .run(id, status, comment || `Status updated to ${status}`);
       }
       
+      logAction((req.session as any).userId, "Update Case", "Case", parseInt(id), `Updated case status to: ${status || 'N/A'}`);
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to update case" });
@@ -983,16 +1068,105 @@ try {
   });
 
   app.get("/api/reports/financial-summary", (req, res) => {
-    const revenue = db.prepare("SELECT SUM(cost) as total FROM cases WHERE status != 'Returned'").get() as { total: number };
+    const totals = db.prepare("SELECT SUM(cost) as gross_revenue, SUM(discount_amount) as total_discounts, SUM(tax_amount) as total_taxes FROM cases WHERE status != 'Returned'").get() as any;
     const payments = db.prepare("SELECT SUM(amount) as total FROM payments").get() as { total: number };
     const expenses = db.prepare("SELECT SUM(amount) as total FROM expenses").get() as { total: number };
+    const pendingInvoices = db.prepare("SELECT SUM(amount) as total FROM invoices WHERE status != 'Paid'").get() as { total: number };
     
+    const netRevenue = (totals.gross_revenue || 0) - (totals.total_discounts || 0) + (totals.total_taxes || 0);
+
     res.json({
-      total_revenue: revenue.total || 0,
+      gross_revenue: totals.gross_revenue || 0,
+      total_discounts: totals.total_discounts || 0,
+      total_taxes: totals.total_taxes || 0,
+      total_revenue: netRevenue,
       total_payments: payments.total || 0,
       total_expenses: expenses.total || 0,
-      net_profit: (revenue.total || 0) - (expenses.total || 0)
+      pending_receivables: pendingInvoices.total || 0,
+      net_profit: netRevenue - (expenses.total || 0)
     });
+  });
+
+  app.get("/api/reports/profit-loss", requireManager, (req, res) => {
+    const { months = 6 } = req.query;
+    const stats = db.prepare(`
+      WITH RECURSIVE dates(date) AS (
+        SELECT date('now', 'start of month', '-' || (? - 1) || ' months')
+        UNION ALL
+        SELECT date(date, '+1 month') FROM dates WHERE date < date('now', 'start of month')
+      )
+      SELECT 
+        strftime('%Y-%m', dates.date) as month,
+        COALESCE((SELECT SUM(cost - discount_amount + tax_amount) FROM cases WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', dates.date) AND status != 'Returned'), 0) as revenue,
+        COALESCE((SELECT SUM(amount) FROM expenses WHERE strftime('%Y-%m', expense_date) = strftime('%Y-%m', dates.date)), 0) as expenses
+      FROM dates
+      ORDER BY month ASC
+    `).all(months);
+    res.json(stats);
+  });
+
+  app.get("/api/reports/doctor-performance", requireManager, (req, res) => {
+    const stats = db.prepare(`
+      SELECT 
+        doctors.id,
+        doctors.name,
+        doctors.clinic_name,
+        COUNT(cases.id) as total_cases,
+        SUM(cases.cost - cases.discount_amount + cases.tax_amount) as total_revenue,
+        AVG(cases.cost) as avg_case_value
+      FROM doctors
+      LEFT JOIN cases ON doctors.id = cases.doctor_id
+      GROUP BY doctors.id
+      ORDER BY total_revenue DESC
+    `).all();
+    res.json(stats);
+  });
+
+  // Doctor-specific revenue trend
+app.get("/api/reports/doctor-revenue-trend/:id", requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = db.prepare(`
+      SELECT 
+        strftime('%Y-%m', month) as month,
+        SUM(revenue) as revenue,
+        SUM(case_count) as case_count
+      FROM (
+        SELECT 
+          strftime('%Y-%m', created_at) as month,
+          cost as revenue,
+          1 as case_count
+        FROM cases
+        WHERE doctor_id = ?
+      )
+      GROUP BY month
+      ORDER BY month DESC
+      LIMIT 12
+    `).all(id);
+    res.json(data.reverse());
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch doctor revenue trend" });
+  }
+});
+
+app.get("/api/notifications", requireAuth, (req, res) => {
+    const user = (req as any).user;
+    let query = "SELECT * FROM notifications WHERE 1=1";
+    const params: any[] = [];
+
+    if (user.role === 'Doctor') {
+      query += " AND doctor_id = ?";
+      params.push(user.doctor_id);
+    }
+
+    query += " ORDER BY created_at DESC LIMIT 50";
+    const notifications = db.prepare(query).all(...params);
+    res.json(notifications);
+  });
+
+  app.put("/api/notifications/:id/read", requireAuth, (req, res) => {
+    db.prepare("UPDATE notifications SET is_read = 1 WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
   });
 
   app.put("/api/invoices/:id/status", (req, res) => {
@@ -1103,7 +1277,7 @@ try {
   // Settings, Users, Rate List, Shades Endpoints
   app.get("/api/users", requireAdmin, (req, res) => {
     const users = db.prepare(`
-      SELECT users.id, users.username, users.role, users.created_at, users.doctor_id, doctors.name as doctor_name 
+      SELECT users.id, users.username, users.role, users.full_name, users.email, users.status, users.last_login, users.created_at, users.doctor_id, doctors.name as doctor_name 
       FROM users 
       LEFT JOIN doctors ON users.doctor_id = doctors.id
     `).all();
@@ -1111,10 +1285,12 @@ try {
   });
 
   app.post("/api/users", requireAdmin, (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password, role, full_name, email } = req.body;
     try {
       const hashedPassword = bcrypt.hashSync(password, 10);
-      const info = db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)").run(username, hashedPassword, role);
+      const info = db.prepare("INSERT INTO users (username, password, role, full_name, email) VALUES (?, ?, ?, ?, ?)")
+        .run(username, hashedPassword, role, full_name || null, email || null);
+      logAction((req.session as any).userId, "Create User", "User", info.lastInsertRowid as number, `Created user: ${username}`);
       res.json({ id: info.lastInsertRowid });
     } catch (err) {
       res.status(400).json({ error: "Username already exists" });
@@ -1122,30 +1298,99 @@ try {
   });
 
   app.delete("/api/users/:id", requireAdmin, (req, res) => {
+    const user = db.prepare("SELECT username FROM users WHERE id = ?").get(req.params.id) as any;
+    if (user && user.username === 'admin') {
+      return res.status(403).json({ error: "Cannot delete default admin" });
+    }
     db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+    logAction((req.session as any).userId, "Delete User", "User", parseInt(req.params.id), `Deleted user: ${user.username}`);
     res.json({ success: true });
+  });
+
+  app.put("/api/users/:id/reset-password", requireAdmin, (req, res) => {
+    const { id } = req.params;
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: "Password is required" });
+    
+    try {
+      const hashedPassword = bcrypt.hashSync(password, 10);
+      db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, id);
+      logAction((req.session as any).userId, "Reset Password", "User", parseInt(id), "Admin reset user password");
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to reset password" });
+    }
   });
 
   app.put("/api/users/:id", requireAdmin, (req, res) => {
     const { id } = req.params;
-    const { username, password, role, doctor_id } = req.body;
+    const { username, password, role, doctor_id, full_name, email, status } = req.body;
     try {
       const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as any;
       if (!user) return res.status(404).json({ error: "User not found" });
 
-      let query = "UPDATE users SET username = ?, role = ?, doctor_id = ? WHERE id = ?";
-      let params = [username || user.username, role || user.role, doctor_id || user.doctor_id, id];
+      if (user.username === 'admin' && status === 'Inactive') {
+        return res.status(403).json({ error: "Cannot deactivate default admin" });
+      }
+
+      let query = "UPDATE users SET username = ?, role = ?, doctor_id = ?, full_name = ?, email = ?, status = ? WHERE id = ?";
+      let params = [
+        username || user.username, 
+        role || user.role, 
+        doctor_id !== undefined ? doctor_id : user.doctor_id,
+        full_name !== undefined ? full_name : user.full_name,
+        email !== undefined ? email : user.email,
+        status || user.status,
+        id
+      ];
 
       if (password) {
         const hashedPassword = bcrypt.hashSync(password, 10);
-        query = "UPDATE users SET username = ?, password = ?, role = ?, doctor_id = ? WHERE id = ?";
-        params = [username || user.username, hashedPassword, role || user.role, doctor_id || user.doctor_id, id];
+        query = "UPDATE users SET username = ?, password = ?, role = ?, doctor_id = ?, full_name = ?, email = ?, status = ? WHERE id = ?";
+        params = [
+          username || user.username, 
+          hashedPassword, 
+          role || user.role, 
+          doctor_id !== undefined ? doctor_id : user.doctor_id,
+          full_name !== undefined ? full_name : user.full_name,
+          email !== undefined ? email : user.email,
+          status || user.status,
+          id
+        ];
       }
 
       db.prepare(query).run(...params);
+      logAction((req.session as any).userId, "Update User", "User", parseInt(id), `Updated user: ${username || user.username}`);
       res.json({ success: true });
     } catch (err) {
+      console.error(err);
       res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  app.put("/api/users/profile", requireAuth, (req, res) => {
+    const user = (req as any).user;
+    const { full_name, email, password } = req.body;
+    try {
+      let query = "UPDATE users SET full_name = ?, email = ? WHERE id = ?";
+      let params = [full_name || user.full_name, email || user.email, user.id];
+
+      if (password) {
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        query = "UPDATE users SET full_name = ?, email = ?, password = ? WHERE id = ?";
+        params = [full_name || user.full_name, email || user.email, hashedPassword, user.id];
+      }
+
+      db.prepare(query).run(...params);
+      
+      // Update session user
+      const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as any;
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      (req.session as any).user = userWithoutPassword;
+
+      res.json(userWithoutPassword);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update profile" });
     }
   });
 
@@ -1157,11 +1402,13 @@ try {
   app.post("/api/rate-list", requireManager, (req, res) => {
     const { case_type, material, price } = req.body;
     const info = db.prepare("INSERT INTO rate_list (case_type, material, price) VALUES (?, ?, ?)").run(case_type, material, price);
+    logAction((req.session as any).userId, "Add Rate", "RateList", info.lastInsertRowid as number, `Added rate for ${case_type} - ${material}`);
     res.json({ id: info.lastInsertRowid });
   });
 
   app.delete("/api/rate-list/:id", requireManager, (req, res) => {
     db.prepare("DELETE FROM rate_list WHERE id = ?").run(req.params.id);
+    logAction((req.session as any).userId, "Delete Rate", "RateList", parseInt(req.params.id), "Deleted rate entry");
     res.json({ success: true });
   });
 
@@ -1174,6 +1421,7 @@ try {
     const { name } = req.body;
     try {
       const info = db.prepare("INSERT INTO shades (name) VALUES (?)").run(name);
+      logAction((req.session as any).userId, "Add Shade", "Shade", info.lastInsertRowid as number, `Added shade: ${name}`);
       res.json({ id: info.lastInsertRowid });
     } catch (err) {
       res.status(400).json({ error: "Shade already exists" });
@@ -1182,6 +1430,7 @@ try {
 
   app.delete("/api/shades/:id", requireManager, (req, res) => {
     db.prepare("DELETE FROM shades WHERE id = ?").run(req.params.id);
+    logAction((req.session as any).userId, "Delete Shade", "Shade", parseInt(req.params.id), "Deleted shade entry");
     res.json({ success: true });
   });
 

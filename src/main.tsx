@@ -4,10 +4,10 @@ import App from './App.tsx';
 import './index.css';
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 
-const rawConvexUrl = import.meta.env.VITE_CONVEX_URL || "https://pleasant-mammoth-827.convex.cloud";
+const rawConvexUrl = import.meta.env.VITE_CONVEX_URL || "https://woozy-retriever-445.convex.cloud";
 // Handle cases where the env var might be the string "undefined" or "null"
 const convexUrl = (rawConvexUrl === "undefined" || rawConvexUrl === "null") 
-  ? "https://pleasant-mammoth-827.convex.cloud" 
+  ? "https://woozy-retriever-445.convex.cloud" 
   : rawConvexUrl;
 
 let convex: ConvexReactClient | null = null;

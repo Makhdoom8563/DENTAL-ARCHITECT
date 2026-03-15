@@ -14,6 +14,7 @@ import type * as doctors from "../doctors.js";
 import type * as expenses from "../expenses.js";
 import type * as inventory from "../inventory.js";
 import type * as invoices from "../invoices.js";
+import type * as migration from "../migration.js";
 import type * as payments from "../payments.js";
 import type * as rates from "../rates.js";
 import type * as reports from "../reports.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   inventory: typeof inventory;
   invoices: typeof invoices;
+  migration: typeof migration;
   payments: typeof payments;
   rates: typeof rates;
   reports: typeof reports;

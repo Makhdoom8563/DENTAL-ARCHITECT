@@ -15,6 +15,7 @@ export const create = mutation({
     quantity: v.number(),
     unit: v.optional(v.string()),
     min_stock_level: v.number(),
+    cost_per_unit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("inventory", {

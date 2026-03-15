@@ -24,6 +24,7 @@ export const create = mutation({
     address: v.optional(v.string()),
     specialization: v.optional(v.string()),
     image_url: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("doctors", {
@@ -43,6 +44,7 @@ export const update = mutation({
     address: v.optional(v.string()),
     specialization: v.optional(v.string()),
     image_url: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...rest } = args;

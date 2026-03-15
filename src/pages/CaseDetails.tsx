@@ -272,12 +272,14 @@ export default function CaseDetails() {
           </button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-zinc-900">{dentalCase.patient_name}</h1>
+              <h1 className="text-3xl font-bold text-zinc-900">{dentalCase.patient_name || "No Name"}</h1>
               <span className={`px-3 py-1 rounded-full text-xs font-bold border ${statusColors[dentalCase.status as keyof typeof statusColors]}`}>
                 {dentalCase.status}
               </span>
             </div>
-            <p className="text-zinc-500 mt-1">Case #{dentalCase.id.toString().substring(0, 4).toUpperCase()} • {dentalCase.doctor_name}</p>
+            <p className="text-zinc-500 mt-1">
+              {dentalCase.patient_id ? `PID: ${dentalCase.patient_id}` : `Case #${dentalCase.id.toString().substring(0, 4).toUpperCase()}`} • {dentalCase.doctor_name}
+            </p>
           </div>
         </div>
         {!isDoctor && (
@@ -364,7 +366,7 @@ export default function CaseDetails() {
               </div>
               <div>
                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Cost</p>
-                <p className="font-bold text-zinc-900">${(dentalCase.cost || 0).toLocaleString()}</p>
+                <p className="font-bold text-zinc-900">Rs {(dentalCase.cost || 0).toLocaleString()}</p>
               </div>
             </div>
             {dentalCase.selected_teeth && (
@@ -586,7 +588,6 @@ export default function CaseDetails() {
                     required
                     type="text"
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    placeholder="e.g. Waxing, Casting, Polishing"
                     value={newTask.task_name}
                     onChange={(e) => setNewTask({...newTask, task_name: e.target.value})}
                   />
@@ -663,7 +664,6 @@ export default function CaseDetails() {
                   <label className="text-sm font-bold text-zinc-700">Comment</label>
                   <textarea 
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all h-24 resize-none"
-                    placeholder="Describe the update..."
                     value={updateData.comment}
                     onChange={(e) => setUpdateData({...updateData, comment: e.target.value})}
                   />
@@ -796,7 +796,6 @@ export default function CaseDetails() {
                     <div className="relative">
                       <textarea 
                         className="w-full pl-4 pr-12 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all h-32 resize-none text-sm"
-                        placeholder="e.g. 'Add a retro filter', 'Highlight the margin in red', 'Brightness increase'..."
                         value={aiPrompt}
                         onChange={(e) => setAiPrompt(e.target.value)}
                         disabled={isAiProcessing}

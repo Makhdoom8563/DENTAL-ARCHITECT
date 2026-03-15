@@ -254,7 +254,7 @@ export default function Invoices() {
   };
 
   const handleSendInvoice = async (inv: any, type: 'whatsapp' | 'email') => {
-    const message = `Hello Dr. ${inv.doctor_name},\n\nThis is a reminder for Invoice #INV-${inv.invoice_no} for the amount of $${inv.amount.toLocaleString()}.\n\nStatus: ${inv.status}\nDue Date: ${inv.due_date ? format(new Date(inv.due_date), 'MMM dd, yyyy') : 'N/A'}\n\nThank you!`;
+    const message = `Hello Dr. ${inv.doctor_name},\n\nThis is a reminder for Invoice #INV-${inv.invoice_no} for the amount of Rs ${inv.amount.toLocaleString()}.\n\nStatus: ${inv.status}\nDue Date: ${inv.due_date ? format(new Date(inv.due_date), 'MMM dd, yyyy') : 'N/A'}\n\nThank you!`;
     
     if (type === 'whatsapp') {
       const phone = inv.doctor_phone ? inv.doctor_phone.replace(/\D/g, '') : '';
@@ -407,7 +407,7 @@ export default function Invoices() {
             <AlertCircle size={20} className="text-amber-500" />
           </div>
           <div className="text-2xl font-bold text-zinc-900">
-            ${invoices.reduce((acc, inv) => inv.status !== 'Paid' ? acc + inv.amount : acc, 0).toLocaleString()}
+            Rs {invoices.reduce((acc, inv) => inv.status !== 'Paid' ? acc + inv.amount : acc, 0).toLocaleString()}
           </div>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
@@ -416,7 +416,7 @@ export default function Invoices() {
             <CheckCircle size={20} className="text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-zinc-900">
-            ${invoices.reduce((acc, inv) => inv.status === 'Paid' ? acc + inv.amount : acc, 0).toLocaleString()}
+            Rs {invoices.reduce((acc, inv) => inv.status === 'Paid' ? acc + inv.amount : acc, 0).toLocaleString()}
           </div>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
@@ -665,7 +665,7 @@ export default function Invoices() {
                   <td className="px-6 py-4 text-zinc-600 font-medium">{inv.doctor_name}</td>
                   <td className="px-6 py-4 text-zinc-500 text-sm">{inv.invoice_date ? format(new Date(inv.invoice_date), 'MMM dd, yyyy') : format(new Date(inv.created_at), 'MMM dd, yyyy')}</td>
                   <td className="px-6 py-4 text-zinc-500 text-sm">{inv.due_date ? format(new Date(inv.due_date), 'MMM dd, yyyy') : '-'}</td>
-                  <td className="px-6 py-4 font-bold text-zinc-900">${inv.amount.toLocaleString()}</td>
+                  <td className="px-6 py-4 font-bold text-zinc-900">Rs {inv.amount.toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <span className={cn(
                       "px-3 py-1 rounded-full text-[10px] font-bold border flex items-center w-fit gap-1", 
@@ -892,7 +892,7 @@ export default function Invoices() {
                             <p className="text-xs text-zinc-500">{c.case_type} • {format(new Date(c.created_at), 'MMM dd')}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-zinc-900">${c.cost.toLocaleString()}</p>
+                            <p className="font-bold text-zinc-900">Rs {c.cost.toLocaleString()}</p>
                             <div className={cn(
                               "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
                               isSelected ? "bg-emerald-500 border-emerald-500 text-white" : "border-zinc-300"
@@ -952,7 +952,7 @@ export default function Invoices() {
                         <div key={idx} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
                           <span className="text-sm font-medium text-zinc-700">{item.description}</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold text-zinc-900">${item.amount.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-zinc-900">Rs {item.amount.toLocaleString()}</span>
                             <button 
                               type="button"
                               onClick={() => {
@@ -976,7 +976,7 @@ export default function Invoices() {
                   <div>
                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Total Amount</p>
                     <p className="text-2xl font-black text-zinc-900">
-                      ${newInvoice.items.reduce((acc, item) => acc + item.amount, 0).toLocaleString()}
+                      Rs {newInvoice.items.reduce((acc, item) => acc + item.amount, 0).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex gap-3">
@@ -1093,7 +1093,7 @@ export default function Invoices() {
                             <p className="text-[10px] text-zinc-400">Case ID: #{item.case_id?.toString().substring(0, 4).toUpperCase()}</p>
                           </td>
                           <td className="px-6 py-4 text-right font-bold text-zinc-900">
-                            ${item.amount.toLocaleString()}
+                            Rs {item.amount.toLocaleString()}
                           </td>
                         </tr>
                       ))}
@@ -1102,7 +1102,7 @@ export default function Invoices() {
                       <tr className="bg-zinc-50/50">
                         <td className="px-6 py-4 font-bold text-zinc-900">Total</td>
                         <td className="px-6 py-4 text-right text-xl font-black text-emerald-600">
-                          ${selectedInvoice.amount.toLocaleString()}
+                          Rs {selectedInvoice.amount.toLocaleString()}
                         </td>
                       </tr>
                     </tfoot>
@@ -1215,17 +1215,17 @@ export default function Invoices() {
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-zinc-700">Amount Received</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">Rs</span>
                     <input 
                       required
                       type="number"
                       step="0.01"
-                      className="w-full pl-8 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      className="w-full pl-20 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
                       value={paymentData.amount}
                       onChange={(e) => setPaymentData({...paymentData, amount: parseFloat(e.target.value)})}
                     />
                   </div>
-                  <p className="text-[10px] text-zinc-400 italic">Remaining balance: ${(selectedInvoice.amount - (selectedInvoice.total_paid || 0)).toLocaleString()}</p>
+                  <p className="text-[10px] text-zinc-400 italic">Remaining balance: Rs {(selectedInvoice.amount - (selectedInvoice.total_paid || 0)).toLocaleString()}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

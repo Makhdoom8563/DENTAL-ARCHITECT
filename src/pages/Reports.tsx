@@ -6,7 +6,8 @@ import {
 } from "recharts";
 import { 
   Calendar, Users, Briefcase, FileText, Download, Filter, 
-  ChevronDown, ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, BarChart2
+  ChevronDown, ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, BarChart2,
+  Wallet, Banknote
 } from "lucide-react";
 import { format, subDays, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { DentalCase, Doctor } from "../types";
@@ -19,7 +20,9 @@ export default function Reports() {
   const [technicianStats, setTechnicianStats] = useState<any[]>([]);
   const [dailyStats, setDailyStats] = useState<any[]>([]);
   const [typeStats, setTypeStats] = useState<any[]>([]);
-  const [financialSummary, setFinancialSummary] = useState<any>({ total_revenue: 0, total_expenses: 0, net_profit: 0 });
+  const [profitLoss, setProfitLoss] = useState<any[]>([]);
+  const [doctorPerformanceStats, setDoctorPerformanceStats] = useState<any[]>([]);
+  const [financialSummary, setFinancialSummary] = useState<any>({ total_revenue: 0, total_expenses: 0, net_profit: 0, pending_receivables: 0 });
   const [loading, setLoading] = useState(true);
   
   // Filters
@@ -38,6 +41,8 @@ export default function Reports() {
         { key: 'techStats', url: "/api/reports/technician-stats", setter: setTechnicianStats },
         { key: 'dailyStats', url: "/api/reports/daily-stats", setter: setDailyStats },
         { key: 'typeStats', url: "/api/reports/type-stats", setter: setTypeStats },
+        { key: 'profitLoss', url: "/api/reports/profit-loss", setter: setProfitLoss },
+        { key: 'docPerf', url: "/api/reports/doctor-performance", setter: setDoctorPerformanceStats },
         { key: 'financialSummary', url: "/api/reports/financial-summary", setter: setFinancialSummary }
       ];
 
@@ -210,7 +215,17 @@ export default function Reports() {
             <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg flex items-center uppercase tracking-wider">Net Profit</span>
           </div>
           <p className="text-sm font-medium text-zinc-400">Total Net Profit</p>
-          <p className="text-3xl font-bold text-white mt-1">${(financialSummary.net_profit || 0).toLocaleString()}</p>
+          <p className="text-3xl font-bold text-white mt-1">Rs {(financialSummary.net_profit || 0).toLocaleString()}</p>
+        </div>
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-zinc-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-rose-50 p-3 rounded-2xl text-rose-600">
+              <Wallet size={24} />
+            </div>
+            <span className="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg flex items-center uppercase tracking-wider">Receivables</span>
+          </div>
+          <p className="text-sm font-medium text-zinc-500">Pending Receivables</p>
+          <p className="text-3xl font-bold text-zinc-900 mt-1">Rs {(financialSummary.pending_receivables || 0).toLocaleString()}</p>
         </div>
       </div>
 
@@ -250,7 +265,7 @@ export default function Reports() {
         {/* Financial Performance Chart */}
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-zinc-100">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-zinc-900">Financial Performance</h2>
+            <h2 className="text-xl font-bold text-zinc-900">Profit & Loss (Monthly)</h2>
             <div className="flex gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-emerald-500" />
@@ -264,28 +279,52 @@ export default function Reports() {
           </div>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyStats}>
+              <LineChart data={profitLoss}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="month" 
                   axisLine={false} 
                   tickLine={false} 
                   tick={{fill: '#94a3b8', fontSize: 10}}
-                  tickFormatter={(val) => format(new Date(val), 'MMM d')}
                 />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#94a3b8', fontSize: 10}} 
+                  tickFormatter={(value) => `Rs ${value}`}
+                />
                 <Tooltip 
                   contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
                 />
-                <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Legend />
+                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} dot={{r: 4}} />
+                <Line type="monotone" dataKey="expenses" stroke="#f43f5e" strokeWidth={3} dot={{r: 4}} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Doctor Revenue Contribution */}
+        <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-zinc-100">
+          <h2 className="text-xl font-bold text-zinc-900 mb-8">Doctor Revenue Contribution</h2>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={doctorPerformanceStats.slice(0, 8)} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} tickFormatter={(v) => `Rs ${v}`} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} width={100} />
+                <Tooltip 
+                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                  formatter={(v) => `Rs ${Number(v).toLocaleString()}`}
+                />
+                <Bar dataKey="total_revenue" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* Case Type Distribution */}
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-zinc-100">
           <h2 className="text-xl font-bold text-zinc-900 mb-8">Case Type Distribution</h2>
@@ -310,14 +349,6 @@ export default function Reports() {
                 <Legend verticalAlign="bottom" height={36}/>
               </PieChart>
             </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Placeholder for future report or more stats */}
-        <div className="bg-zinc-50 p-8 rounded-3xl border border-zinc-100 border-dashed flex items-center justify-center">
-          <div className="text-center">
-            <BarChart2 size={48} className="mx-auto text-zinc-200 mb-4" />
-            <p className="text-zinc-400 font-medium italic">More analytics coming soon...</p>
           </div>
         </div>
       </div>
